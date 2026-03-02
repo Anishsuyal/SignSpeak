@@ -1,0 +1,91 @@
+/* MAIN */
+.dashboard-container {
+  background: #f4f6f8;
+  height: 100vh;
+}
+
+/* NAVBAR */
+.dashboard-navbar {
+  height: 70px;
+  background: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 30px;
+  border-bottom: 1px solid #ddd;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hand {
+  background: #dff5f1;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.logout {
+  display: flex;
+  gap: 8px;
+  cursor: pointer;
+}
+
+/* BODY */
+.dashboard-body {
+  display: flex;
+  gap: 20px;
+  padding: 30px;
+}
+
+/* SECTIONS */
+.camera-section,
+.text-section {
+  flex: 1;
+}
+
+.section-header {
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* CAMERA BOX */
+.camera-box {
+  height: 420px;
+  background: #e9ecef;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #777;
+}
+
+/* TEXT BOX */
+.text-box {
+  height: 350px;
+  background: #e9ecef;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #777;
+}
+
+.bottom-info {
+  margin-top: 15px;
+  color: #666;
+}
+
+/* BUTTON */
+.start-btn {
+  background: #2da69a;
+  border: none;
+  color: white;
+  padding: 8px 18px;
+  border-radius: 8px;
+}

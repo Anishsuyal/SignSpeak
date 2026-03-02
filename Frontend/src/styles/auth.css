@@ -1,0 +1,61 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+
+/* LANDING PAGE */
+.landing-container {
+  height: 100vh;
+  background: #213943;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.landing-content {
+  max-width: 600px;
+}
+
+.logo {
+  font-size: 40px;
+  margin-bottom: 20px;
+}
+
+.brand {
+  font-size: 64px;
+  font-weight: bold;
+}
+
+.tagline {
+  margin-top: 20px;
+  font-size: 18px;
+}
+
+/* AUTH LAYOUT */
+.auth-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* LEFT SIDE */
+.left-panel {
+  flex: 1;
+  background: #213943;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* RIGHT SIDE */
+.right-panel {
+  flex: 1;
+  background: #f4f4f4;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* FORM BOX */
+.form-box {
+  width: 380px;
+}
