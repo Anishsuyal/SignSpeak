@@ -1,10 +1,26 @@
+import { useRef, useState } from "react";
 import Navbar from "../components/Navbar";
 
-
 export default function Dashboard() {
+  const videoRef = useRef(null);
+  const [cameraOn, setCameraOn] = useState(false);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+      });
+
+      videoRef.current.srcObject = stream;
+      setCameraOn(true);
+    } catch (err) {
+      alert("Camera access denied or not available.");
+      console.error(err);
+    }
+  };
+
   return (
     <div className="dashboard-container">
-
       <Navbar />
 
       <div className="dashboard-body">
@@ -14,13 +30,22 @@ export default function Dashboard() {
 
           <div className="section-header">
             CAMERA FEED
-            <button className="start-btn">
+            <button className="start-btn" onClick={startCamera}>
               📷 Start Camera
             </button>
           </div>
 
           <div className="camera-box">
-            <p>Click "Start Camera" to begin</p>
+            {!cameraOn && (
+              <p>Click "Start Camera" to begin</p>
+            )}
+
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className="camera-video"
+            />
           </div>
 
         </div>
@@ -46,7 +71,6 @@ export default function Dashboard() {
         </div>
 
       </div>
-
     </div>
   );
 }
