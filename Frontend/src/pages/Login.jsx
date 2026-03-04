@@ -1,53 +1,62 @@
 import AuthLayout from "../components/AuthLayout";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { loginUser } from "../api/auth";
 
 export default function Login() {
+
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [email,setEmail] = useState("");
+  const [password,setPassword] = useState("");
+  const [error,setError] = useState("");
 
-  // 🔥 AUTO REMOVE ERROR AFTER 3 SECONDS
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError("");
-      }, 2000);
-
-      return () => clearTimeout(timer);
+  useEffect(()=>{
+    if(error){
+      const timer = setTimeout(()=>setError(""),2000);
+      return ()=>clearTimeout(timer);
     }
-  }, [error]);
+  },[error])
 
-  const handleSubmit = () => {
-    setError("");
+  const handleSubmit = async () => {
 
-    if (!email || !password) {
-      return setError("All fields are required.");
+    if(!email || !password){
+      return setError("All fields are required");
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return setError("Please enter a valid email address.");
+    try{
+
+      const res = await loginUser({
+        email,
+        password
+      });
+
+      console.log(res.data);
+
+      navigate("/dashboard");
+
+    }
+    catch(err){
+
+      setError(
+        err.response?.data?.message || "Login failed"
+      )
+
     }
 
-    if (password.length < 6) {
-      return setError("Password must be at least 6 characters.");
-    }
-
-    localStorage.setItem("auth", "true");
-    navigate("/dashboard");
-  };
+  }
 
   return (
+
     <AuthLayout>
+
       <div className="form-box">
+
         <h2>Welcome back</h2>
         <p>Sign in to continue translating</p>
 
         {error && (
-          <div className="alert alert-danger fade show">
+          <div className="alert alert-danger">
             {error}
           </div>
         )}
@@ -57,7 +66,7 @@ export default function Login() {
           placeholder="you@example.com"
           className="form-control mb-3"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e)=>setEmail(e.target.value)}
         />
 
         <input
@@ -65,7 +74,7 @@ export default function Login() {
           placeholder="********"
           className="form-control mb-4"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e)=>setPassword(e.target.value)}
         />
 
         <button
@@ -79,7 +88,9 @@ export default function Login() {
           Don't have an account?
           <Link to="/register"> Create one</Link>
         </p>
+
       </div>
+
     </AuthLayout>
   );
 }

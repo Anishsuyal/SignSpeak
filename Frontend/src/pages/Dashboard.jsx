@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import Navbar from "../components/Navbar";
+import { FaStopCircle } from "react-icons/fa";
 
 export default function Dashboard() {
   const videoRef = useRef(null);
@@ -19,6 +20,18 @@ export default function Dashboard() {
     }
   };
 
+  const stopCamera = () => {
+    const stream = videoRef.current.srcObject;
+
+    if (stream) {
+      const tracks = stream.getTracks();
+      tracks.forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+
+    setCameraOn(false);
+  };
+
   return (
     <div className="dashboard-container">
       <Navbar />
@@ -30,14 +43,26 @@ export default function Dashboard() {
 
           <div className="section-header">
             CAMERA FEED
-            <button className="start-btn" onClick={startCamera}>
-              📷 Start Camera
-            </button>
+
+            <div className="camera-controls">
+              <button className="start-btn" onClick={startCamera}>
+                📷 Start Camera
+              </button>
+
+              {cameraOn && (
+                <button className="stop-btn" onClick={stopCamera}>
+                  <FaStopCircle />
+                </button>
+              )}
+            </div>
+
           </div>
 
           <div className="camera-box">
             {!cameraOn && (
-              <p>Click "Start Camera" to begin</p>
+              <div className="camera-placeholder">
+                Click "Start Camera" to begin
+              </div>
             )}
 
             <video
@@ -47,27 +72,24 @@ export default function Dashboard() {
               className="camera-video"
             />
           </div>
-
         </div>
 
         {/* RIGHT TRANSLATION */}
         <div className="text-section">
-
           <div className="section-header">
             TRANSLATED TEXT
           </div>
 
           <div className="text-box">
             <p>
-              Translated text will appear here as you sign in
-              front of the camera
+              Translated text will appear here as you sign in front of the
+              camera
             </p>
           </div>
 
           <div className="bottom-info">
             Start the camera to begin translating sign language.
           </div>
-
         </div>
 
       </div>
