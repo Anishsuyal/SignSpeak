@@ -2,36 +2,31 @@ import { FaSignOutAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { logoutUser } from "../api/auth";
 
-export default function Navbar(){
-
+export default function Navbar() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-
-    try{
+    try {
       await logoutUser();
+      localStorage.removeItem("auth");
+      localStorage.removeItem("user");
       navigate("/");
-    }
-    catch(err){
+    } catch (err) {
       console.log(err);
     }
+  };
 
-  }
-
-  return(
-
+  return (
     <div className="dashboard-navbar">
-
       <div className="logo-area">
-        <span className="hand">✋</span>
+        <span className="hand">Sign</span>
         <h5>SignSpeak</h5>
       </div>
 
       <div className="logout" onClick={handleLogout}>
-        <FaSignOutAlt/>
+        <FaSignOutAlt />
         <span>Logout</span>
       </div>
-
     </div>
-  )
+  );
 }

@@ -34,6 +34,8 @@ export default function Register(){
       });
 
       console.log(res.data);
+      localStorage.setItem("auth", "true");
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
       navigate("/dashboard");
 

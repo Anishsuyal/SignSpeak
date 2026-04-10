@@ -5,11 +5,8 @@ export default function Landing() {
 
   return (
     <div className="landing-container">
-
       <div className="landing-content text-center text-white">
-
-        <div className="logo">✋</div>
-
+        <div className="logo">Sign</div>
         <h1 className="brand">SignSpeak</h1>
 
         <p className="tagline">
@@ -23,7 +20,7 @@ export default function Landing() {
             className="btn btn-success me-3 px-4"
             onClick={() => navigate("/register")}
           >
-            Get Started →
+            Get Started
           </button>
 
           <button
@@ -33,9 +30,7 @@ export default function Landing() {
             Sign In
           </button>
         </div>
-
       </div>
-
     </div>
   );
 }

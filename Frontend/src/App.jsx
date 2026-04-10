@@ -30,9 +30,10 @@ import "./styles/auth.css";
 import "./styles/dashboard.css";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
-import Register from "./pages/register";
-import Dashboard from "./pages/dashboard";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+
 export default function App() {
   return (
     <BrowserRouter>
