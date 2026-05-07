@@ -1,20 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import { FaRegTrashAlt, FaStopCircle } from "react-icons/fa";
+import { FaRegTrashAlt, FaStopCircle, FaVolumeUp } from "react-icons/fa";
 import Navbar from "../components/Navbar";
-import { getHandLandmarker } from "../ml/handLandmarker";
-import { classifySign } from "../ml/signClassifier";
+import { predictSequence, resetDecoder, speakText } from "../api/ml";
+import { getHandLandmarker } from "../vision/handLandmarker";
 
-const STABLE_FRAMES_REQUIRED = 12;
-const LETTER_COOLDOWN_MS = 1400;
 const FRAME_INTERVAL_MS = 120;
+const SEQUENCE_LENGTH = 32;
+const PREDICT_EVERY_N_FRAMES = 4;
+const MIN_LIVE_CONFIDENCE = 0.78;
+const MIN_TOP_MARGIN = 0.1;
+
+function flattenLandmarks(landmarks) {
+  return landmarks.flatMap((point) => [point.x, point.y, point.z ?? 0]);
+}
 
 export default function Dashboard() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const intervalRef = useRef(null);
-  const lastAcceptedRef = useRef({ label: "", time: 0 });
-  const candidateRef = useRef({ label: "", count: 0 });
+  const sequenceRef = useRef([]);
+  const requestInFlightRef = useRef(false);
+  const frameCounterRef = useRef(0);
+  const lastSpokenSentenceRef = useRef("");
 
   const [cameraOn, setCameraOn] = useState(false);
   const [translatedText, setTranslatedText] = useState("");
@@ -22,6 +30,7 @@ export default function Dashboard() {
   const [predictionConfidence, setPredictionConfidence] = useState(null);
   const [modelStatus, setModelStatus] = useState("Model not loaded");
   const [recognitionMode, setRecognitionMode] = useState("idle");
+  const [tokenTrail, setTokenTrail] = useState([]);
 
   const drawHand = (landmarks) => {
     const canvas = canvasRef.current;
@@ -88,51 +97,61 @@ export default function Dashboard() {
       drawHand(landmarks);
 
       if (!landmarks) {
-        candidateRef.current = { label: "", count: 0 };
+        sequenceRef.current = [];
         setLivePrediction("No hand detected");
         setPredictionConfidence(null);
         setRecognitionMode("searching");
         return;
       }
 
-      const prediction = classifySign(landmarks);
+      const flattened = flattenLandmarks(landmarks);
+      sequenceRef.current = [...sequenceRef.current, flattened].slice(-SEQUENCE_LENGTH);
+      frameCounterRef.current += 1;
 
-      if (!prediction) {
-        candidateRef.current = { label: "", count: 0 };
-        setLivePrediction("Hand detected, sign not matched yet");
-        setPredictionConfidence(null);
+      if (
+        sequenceRef.current.length < SEQUENCE_LENGTH ||
+        requestInFlightRef.current ||
+        frameCounterRef.current % PREDICT_EVERY_N_FRAMES !== 0
+      ) {
         setRecognitionMode("tracking");
         return;
       }
 
-      setLivePrediction(prediction.label);
-      setPredictionConfidence(prediction.confidence);
-      setRecognitionMode("tracking");
+      requestInFlightRef.current = true;
+      const response = await predictSequence(sequenceRef.current);
+      const { prediction, decoded } = response;
+      const topPredictions = prediction.top_predictions ?? [];
+      const topMargin =
+        topPredictions.length > 1
+          ? topPredictions[0].confidence - topPredictions[1].confidence
+          : 1;
+      const confidentEnough =
+        prediction.confidence >= MIN_LIVE_CONFIDENCE && topMargin >= MIN_TOP_MARGIN;
 
-      if (candidateRef.current.label === prediction.label) {
-        candidateRef.current.count += 1;
-      } else {
-        candidateRef.current = { label: prediction.label, count: 1 };
+      setLivePrediction(confidentEnough ? prediction.label : "Prediction too uncertain");
+      setPredictionConfidence(confidentEnough ? prediction.confidence : null);
+      setRecognitionMode(decoded.accepted ? "accepted" : "tracking");
+
+      if (confidentEnough) {
+        setTranslatedText(decoded.sentence);
+        setTokenTrail(decoded.tokens);
       }
 
-      const now = Date.now();
-      const recentlyAccepted =
-        lastAcceptedRef.current.label === prediction.label &&
-        now - lastAcceptedRef.current.time < LETTER_COOLDOWN_MS;
-
       if (
-        candidateRef.current.count >= STABLE_FRAMES_REQUIRED &&
-        !recentlyAccepted
+        confidentEnough &&
+        decoded.accepted &&
+        decoded.sentence &&
+        decoded.sentence !== lastSpokenSentenceRef.current
       ) {
-        setTranslatedText((current) => `${current}${prediction.label}`);
-        lastAcceptedRef.current = { label: prediction.label, time: now };
-        candidateRef.current = { label: "", count: 0 };
-        setRecognitionMode("accepted");
+        lastSpokenSentenceRef.current = decoded.sentence;
+        await speakText(decoded.sentence);
       }
     } catch (error) {
       console.error(error);
-      setModelStatus("Model failed to run");
+      setModelStatus("Python ML API unavailable");
       setRecognitionMode("error");
+    } finally {
+      requestInFlightRef.current = false;
     }
   };
 
@@ -155,9 +174,10 @@ export default function Dashboard() {
 
   const startCamera = async () => {
     try {
-      setModelStatus("Loading hand landmark model...");
+      setModelStatus("Loading browser hand landmarks...");
       await getHandLandmarker();
-      setModelStatus("Model ready");
+      await resetDecoder();
+      setModelStatus("Python ML model connected");
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -169,6 +189,9 @@ export default function Dashboard() {
       });
 
       streamRef.current = stream;
+      sequenceRef.current = [];
+      frameCounterRef.current = 0;
+      lastSpokenSentenceRef.current = "";
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -179,7 +202,7 @@ export default function Dashboard() {
       setRecognitionMode("searching");
       startRecognitionLoop();
     } catch (err) {
-      alert("Camera or model could not start. Check camera permission and internet connection.");
+      alert("Camera or Python ML API could not start. Make sure api.py is running on port 8001.");
       console.error(err);
       setModelStatus("Model unavailable");
     }
@@ -205,7 +228,8 @@ export default function Dashboard() {
     }
 
     streamRef.current = null;
-    candidateRef.current = { label: "", count: 0 };
+    sequenceRef.current = [];
+    frameCounterRef.current = 0;
     setCameraOn(false);
     setLivePrediction("Waiting for hand sign...");
     setPredictionConfidence(null);
@@ -223,13 +247,28 @@ export default function Dashboard() {
     };
   }, []);
 
-  const appendSpace = () => {
-    setTranslatedText((current) => (current.endsWith(" ") || current.length === 0 ? current : `${current} `));
+  const clearText = async () => {
+    setTranslatedText("");
+    setTokenTrail([]);
+    lastSpokenSentenceRef.current = "";
+
+    try {
+      await resetDecoder();
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const clearText = () => {
-    setTranslatedText("");
-    lastAcceptedRef.current = { label: "", time: 0 };
+  const speakCurrentText = async () => {
+    if (!translatedText) {
+      return;
+    }
+
+    try {
+      await speakText(translatedText);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
@@ -257,7 +296,7 @@ export default function Dashboard() {
           <div className="camera-box">
             {!cameraOn && (
               <div className="camera-placeholder">
-                Start the camera to load the recognizer and begin translating hand signs.
+                Start the camera after the Python ML server is running to begin model-based translation.
               </div>
             )}
 
@@ -276,7 +315,8 @@ export default function Dashboard() {
           </div>
 
           <div className="supported-signs">
-            Starter signs: <strong>A, B, C, D, E, I, O, U, V</strong>
+            Sequence window: <strong>{SEQUENCE_LENGTH}</strong> frames. Current decoded tokens:{" "}
+            <strong>{tokenTrail.length ? tokenTrail.join(" | ") : "none yet"}</strong>
           </div>
         </div>
 
@@ -285,8 +325,9 @@ export default function Dashboard() {
             <span>TRANSLATED TEXT</span>
 
             <div className="text-actions">
-              <button className="secondary-btn" onClick={appendSpace}>
-                Add Space
+              <button className="secondary-btn" onClick={speakCurrentText}>
+                <FaVolumeUp />
+                Speak
               </button>
               <button className="secondary-btn danger-btn" onClick={clearText}>
                 <FaRegTrashAlt />
@@ -299,12 +340,12 @@ export default function Dashboard() {
             {translatedText ? (
               <p>{translatedText}</p>
             ) : (
-              <p>Recognized letters will appear here when you hold a supported sign steadily for a moment.</p>
+              <p>The Python model will build sentence text here from rolling landmark sequences.</p>
             )}
           </div>
 
           <div className="bottom-info">
-            Hold one sign steadily in frame. The app stabilizes predictions before adding letters so the output is less noisy.
+            Real accuracy will improve after you record real samples with the Python collector and retrain the model.
           </div>
         </div>
       </div>
